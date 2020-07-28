@@ -2332,25 +2332,27 @@ gst_ffmpeg_codecid_to_caps (enum AVCodecID codec_id,
 
     /* set private data */
     if (context && context->extradata_size > 0) {
-#if GST_CHECK_VERSION(1, 17, 0)
+#if GST_CHECK_VERSION(1, 17, 0) || !__has_include("gst-libs/ext/libav/libavformat/avc.h")
       GstBuffer *data = gst_buffer_new_and_alloc (context->extradata_size);
 
       gst_buffer_fill (data, 0, context->extradata, context->extradata_size);
       gst_caps_set_simple (caps, "codec_data", GST_TYPE_BUFFER, data, NULL);
       gst_buffer_unref (data);
 #else
-      AVIOContext* pb = NULL;
-      int res = avio_open_dyn_buf(&pb);
+      AVIOContext *pb = NULL;
+      int res = avio_open_dyn_buf (&pb);
       if (res == 0) {
-        res = ff_isom_write_avcc(pb, context->extradata, context->extradata_size);
+        res =
+            ff_isom_write_avcc (pb, context->extradata,
+            context->extradata_size);
         if (res == 0) {
-          uint8_t* out = NULL;
-          int len = avio_close_dyn_buf(pb, &out);
-          GstBuffer* data = gst_buffer_new_and_alloc (len);
-          gst_buffer_fill(data, 0, out, len);
-          gst_caps_set_simple(caps, "codec_data", GST_TYPE_BUFFER, data, NULL);
+          uint8_t *out = NULL;
+          int len = avio_close_dyn_buf (pb, &out);
+          GstBuffer *data = gst_buffer_new_and_alloc (len);
+          gst_buffer_fill (data, 0, out, len);
+          gst_caps_set_simple (caps, "codec_data", GST_TYPE_BUFFER, data, NULL);
           gst_buffer_unref (data);
-          av_free(out);
+          av_free (out);
         }
       }
 #endif
